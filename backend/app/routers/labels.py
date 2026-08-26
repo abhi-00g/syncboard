@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
 from app.models.user import User
+from app.realtime.events import LABEL_CREATED, LABEL_DELETED, broadcast_event
 from app.schemas.card import LabelCreate, LabelResponse
 from app.services.card import (
     create_label,
@@ -21,17 +22,25 @@ async def create_new_label(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new label for this board.
-
-    Labels are board-scoped: a 'Bug' label on Board A is
-    independent from a 'Bug' label on Board B.
-    """
+    """Create a new label for this board."""
     try:
         await verify_board_access(db, board_id, current_user.id)
     except PermissionError:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
 
     label = await create_label(db, board_id, body.name, body.color)
+
+    await broadcast_event(
+        board_id=board_id,
+        event_type=LABEL_CREATED,
+        data={
+            "label_id": label.id,
+            "name": label.name,
+            "color": label.color,
+        },
+        actor_id=current_user.id,
+    )
+
     return label
 
 
@@ -69,3 +78,10 @@ async def remove_label(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
         )
+
+    await broadcast_event(
+        board_id=board_id,
+        event_type=LABEL_DELETED,
+        data={"label_id": label_id},
+        actor_id=current_user.id,
+    )

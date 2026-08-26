@@ -3,6 +3,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
 from app.models.user import User
+from app.realtime.events import (
+    CARD_CREATED,
+    CARD_DELETED,
+    CARD_MOVED,
+    CARD_UPDATED,
+    COMMENT_ADDED,
+    COMMENT_DELETED,
+    LABEL_ATTACHED,
+    LABEL_REMOVED,
+    broadcast_event,
+)
 from app.schemas.card import (
     CardCreate,
     CardDetailResponse,
@@ -12,7 +23,6 @@ from app.schemas.card import (
     CommentResponse,
 )
 from app.schemas.column import CardBriefResponse
-from app.services.board import check_board_membership
 from app.services.card import (
     ConflictError,
     add_comment,
@@ -48,12 +58,7 @@ async def create_new_card(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new card in a column.
-
-    The column_id is in the request body because a card belongs
-    to a specific column, but the URL is scoped to the board
-    (for authorization). The column must belong to this board.
-    """
+    """Create a new card in a column."""
     await _check_membership(board_id, current_user, db)
 
     try:
@@ -73,6 +78,20 @@ async def create_new_card(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
         )
 
+    # Broadcast to all users on this board
+    await broadcast_event(
+        board_id=board_id,
+        event_type=CARD_CREATED,
+        data={
+            "card_id": card.id,
+            "column_id": card.column_id,
+            "title": card.title,
+            "position": card.position,
+            "version": card.version,
+        },
+        actor_id=current_user.id,
+    )
+
     return card
 
 
@@ -83,10 +102,7 @@ async def get_card(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get full card detail including comments, labels, and assignee.
-
-    This is called when a user clicks on a card to open the detail modal.
-    """
+    """Get full card detail including comments, labels, and assignee."""
     await _check_membership(board_id, current_user, db)
 
     try:
@@ -107,11 +123,7 @@ async def update_existing_card(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update a card's content (title, description, assignee, due date).
-
-    Requires the current version number for optimistic concurrency control.
-    If the version doesn't match (someone else edited it), returns 409.
-    """
+    """Update a card's content with optimistic concurrency control."""
     await _check_membership(board_id, current_user, db)
 
     try:
@@ -138,6 +150,21 @@ async def update_existing_card(
             },
         )
 
+    await broadcast_event(
+        board_id=board_id,
+        event_type=CARD_UPDATED,
+        data={
+            "card_id": card.id,
+            "column_id": card.column_id,
+            "title": card.title,
+            "position": card.position,
+            "version": card.version,
+            "assigned_to": card.assigned_to,
+            "due_date": card.due_date.isoformat() if card.due_date else None,
+        },
+        actor_id=current_user.id,
+    )
+
     return card
 
 
@@ -149,12 +176,7 @@ async def move_existing_card(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Move a card to a different column and/or position.
-
-    Separate from update because moving changes location,
-    not content. These become different WebSocket events in Phase 3.
-    Returns 409 if the version doesn't match.
-    """
+    """Move a card to a different column and/or position."""
     await _check_membership(board_id, current_user, db)
 
     try:
@@ -179,6 +201,19 @@ async def move_existing_card(
             },
         )
 
+    await broadcast_event(
+        board_id=board_id,
+        event_type=CARD_MOVED,
+        data={
+            "card_id": card.id,
+            "from_column_id": body.column_id,
+            "to_column_id": card.column_id,
+            "position": card.position,
+            "version": card.version,
+        },
+        actor_id=current_user.id,
+    )
+
     return card
 
 
@@ -199,9 +234,16 @@ async def delete_existing_card(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
         )
 
+    await broadcast_event(
+        board_id=board_id,
+        event_type=CARD_DELETED,
+        data={"card_id": card_id},
+        actor_id=current_user.id,
+    )
+
 
 # ──────────────────────────────────────────────
-# Comments (nested under cards)
+# Comments
 # ──────────────────────────────────────────────
 
 
@@ -217,11 +259,7 @@ async def create_comment(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Add a comment to a card.
-
-    In Phase 3, this will also broadcast a real-time event
-    so other users viewing the card see the comment appear.
-    """
+    """Add a comment to a card. Broadcasts to all board members."""
     await _check_membership(board_id, current_user, db)
 
     try:
@@ -230,6 +268,19 @@ async def create_comment(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
         )
+
+    await broadcast_event(
+        board_id=board_id,
+        event_type=COMMENT_ADDED,
+        data={
+            "comment_id": comment.id,
+            "card_id": card_id,
+            "user_id": current_user.id,
+            "content": comment.content,
+            "created_at": comment.created_at.isoformat(),
+        },
+        actor_id=current_user.id,
+    )
 
     return comment
 
@@ -259,9 +310,16 @@ async def remove_comment(
             status_code=status.HTTP_403_FORBIDDEN, detail=str(e)
         )
 
+    await broadcast_event(
+        board_id=board_id,
+        event_type=COMMENT_DELETED,
+        data={"comment_id": comment_id, "card_id": card_id},
+        actor_id=current_user.id,
+    )
+
 
 # ──────────────────────────────────────────────
-# Card-Label operations (attach / remove)
+# Card-Label operations
 # ──────────────────────────────────────────────
 
 
@@ -286,6 +344,13 @@ async def attach_label(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
         )
 
+    await broadcast_event(
+        board_id=board_id,
+        event_type=LABEL_ATTACHED,
+        data={"card_id": card_id, "label_id": label_id},
+        actor_id=current_user.id,
+    )
+
     return {"detail": "Label attached"}
 
 
@@ -309,3 +374,10 @@ async def detach_label(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
         )
+
+    await broadcast_event(
+        board_id=board_id,
+        event_type=LABEL_REMOVED,
+        data={"card_id": card_id, "label_id": label_id},
+        actor_id=current_user.id,
+    )
