@@ -11,6 +11,7 @@ services:
       - JWT_SECRET_KEY=dev-secret-key-change-in-production
       - ENVIRONMENT=development
       - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
     volumes:
       - ./backend/app:/app/app
       - ./backend/alembic:/app/alembic

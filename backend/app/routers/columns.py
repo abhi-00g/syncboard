@@ -5,6 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.dependencies import get_current_user, get_db
 from app.models.column import Column
 from app.models.user import User
+from app.realtime.events import (
+    COLUMN_CREATED,
+    COLUMN_DELETED,
+    COLUMN_UPDATED,
+    broadcast_event,
+)
 from app.schemas.column import ColumnCreate, ColumnResponse, ColumnUpdate
 from app.services.board import check_board_membership, get_next_column_position
 
@@ -18,10 +24,7 @@ async def create_column(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Add a new column to a board.
-
-    If position is not provided, the column is added at the end.
-    """
+    """Add a new column to a board."""
     membership = await check_board_membership(db, board_id, current_user.id)
     if membership is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
@@ -34,6 +37,18 @@ async def create_column(
     db.add(column)
     await db.commit()
     await db.refresh(column)
+
+    await broadcast_event(
+        board_id=board_id,
+        event_type=COLUMN_CREATED,
+        data={
+            "column_id": column.id,
+            "name": column.name,
+            "position": column.position,
+        },
+        actor_id=current_user.id,
+    )
+
     return column
 
 
@@ -64,6 +79,18 @@ async def update_column(
 
     await db.commit()
     await db.refresh(column)
+
+    await broadcast_event(
+        board_id=board_id,
+        event_type=COLUMN_UPDATED,
+        data={
+            "column_id": column.id,
+            "name": column.name,
+            "position": column.position,
+        },
+        actor_id=current_user.id,
+    )
+
     return column
 
 
@@ -88,3 +115,10 @@ async def delete_column(
 
     await db.delete(column)
     await db.commit()
+
+    await broadcast_event(
+        board_id=board_id,
+        event_type=COLUMN_DELETED,
+        data={"column_id": column_id},
+        actor_id=current_user.id,
+    )

@@ -1,13 +1,35 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
+from app.realtime.pubsub import redis_service
 from app.routers import auth, boards, cards, columns, labels
+from app.routers import websocket as ws_router
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Manage startup and shutdown of long-lived connections.
+
+    asynccontextmanager replaces the older @app.on_event("startup")
+    pattern. Everything before `yield` runs at startup, everything
+    after runs at shutdown. This ensures Redis connections are
+    properly cleaned up even if the server crashes.
+    """
+    # Startup: connect to Redis
+    await redis_service.connect()
+    yield
+    # Shutdown: disconnect from Redis
+    await redis_service.disconnect()
+
 
 app = FastAPI(
     title="SyncBoard API",
     description="Real-time collaborative task board",
-    version="0.1.0",
+    version="0.2.0",
+    lifespan=lifespan,
 )
 
 # CORS: allow the React frontend to call this API.
@@ -32,6 +54,7 @@ app.include_router(boards.router)
 app.include_router(columns.router)
 app.include_router(cards.router)
 app.include_router(labels.router)
+app.include_router(ws_router.router)
 
 
 @app.get("/api/health")

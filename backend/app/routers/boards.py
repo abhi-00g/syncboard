@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependencies import get_current_user, get_db
 from app.models.user import User
+from app.realtime.events import BOARD_UPDATED, MEMBER_ADDED, broadcast_event
 from app.schemas.board import (
     AddMemberRequest,
     BoardCreate,
@@ -28,10 +29,7 @@ async def create_new_board(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Create a new board with default columns.
-
-    The authenticated user becomes the board owner automatically.
-    """
+    """Create a new board with default columns."""
     board = await create_board(db, body.name, current_user)
     return board
 
@@ -51,11 +49,7 @@ async def get_board(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get full board detail with columns, cards, and members.
-
-    Authorization check: the user must be a board member.
-    This is the main endpoint the frontend calls when opening a board.
-    """
+    """Get full board detail with columns, cards, and members."""
     membership = await check_board_membership(db, board_id, current_user.id)
     if membership is None:
         raise HTTPException(
@@ -95,6 +89,14 @@ async def update_board(
     board.name = body.name
     await db.commit()
     await db.refresh(board)
+
+    await broadcast_event(
+        board_id=board_id,
+        event_type=BOARD_UPDATED,
+        data={"name": board.name},
+        actor_id=current_user.id,
+    )
+
     return board
 
 
@@ -104,12 +106,7 @@ async def delete_board(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Delete a board. Only the owner can do this.
-
-    cascade='all, delete-orphan' on the Board model means deleting
-    a board automatically deletes its columns, cards, memberships,
-    etc. One delete, everything cleans up.
-    """
+    """Delete a board. Only the owner can do this."""
     membership = await check_board_membership(db, board_id, current_user.id)
     if membership is None or membership.role != "owner":
         raise HTTPException(
@@ -154,4 +151,16 @@ async def add_member(
 
     # Reload with user relationship for response
     await db.refresh(new_membership, ["user"])
+
+    await broadcast_event(
+        board_id=board_id,
+        event_type=MEMBER_ADDED,
+        data={
+            "user_id": new_membership.user_id,
+            "email": body.email,
+            "role": new_membership.role,
+        },
+        actor_id=current_user.id,
+    )
+
     return new_membership
