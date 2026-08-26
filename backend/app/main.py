@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.realtime.pubsub import redis_service
-from app.routers import auth, boards, cards, columns, labels
+from app.routers import activity, auth, boards, cards, columns, labels
 from app.routers import websocket as ws_router
 
 
@@ -54,6 +54,7 @@ app.include_router(boards.router)
 app.include_router(columns.router)
 app.include_router(cards.router)
 app.include_router(labels.router)
+app.include_router(activity.router)
 app.include_router(ws_router.router)
 
 

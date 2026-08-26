@@ -23,6 +23,7 @@ from app.schemas.card import (
     CommentResponse,
 )
 from app.schemas.column import CardBriefResponse
+from app.services.activity import log_activity
 from app.services.card import (
     ConflictError,
     add_comment,
@@ -41,7 +42,6 @@ router = APIRouter(prefix="/api/boards/{board_id}/cards", tags=["cards"])
 
 
 async def _check_membership(board_id: int, user: User, db: AsyncSession):
-    """Shared authorization check for all card routes."""
     try:
         await verify_board_access(db, board_id, user.id)
     except PermissionError:
@@ -78,19 +78,16 @@ async def create_new_card(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
         )
 
-    # Broadcast to all users on this board
-    await broadcast_event(
-        board_id=board_id,
-        event_type=CARD_CREATED,
-        data={
-            "card_id": card.id,
-            "column_id": card.column_id,
-            "title": card.title,
-            "position": card.position,
-            "version": card.version,
-        },
-        actor_id=current_user.id,
-    )
+    event_data = {
+        "card_id": card.id,
+        "column_id": card.column_id,
+        "title": card.title,
+        "position": card.position,
+        "version": card.version,
+    }
+
+    await broadcast_event(board_id, CARD_CREATED, event_data, current_user.id)
+    await log_activity(db, board_id, current_user.id, CARD_CREATED, "card", card.id, event_data)
 
     return card
 
@@ -144,26 +141,21 @@ async def update_existing_card(
     except ConflictError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "message": str(e),
-                "current_version": e.current_version,
-            },
+            detail={"message": str(e), "current_version": e.current_version},
         )
 
-    await broadcast_event(
-        board_id=board_id,
-        event_type=CARD_UPDATED,
-        data={
-            "card_id": card.id,
-            "column_id": card.column_id,
-            "title": card.title,
-            "position": card.position,
-            "version": card.version,
-            "assigned_to": card.assigned_to,
-            "due_date": card.due_date.isoformat() if card.due_date else None,
-        },
-        actor_id=current_user.id,
-    )
+    event_data = {
+        "card_id": card.id,
+        "column_id": card.column_id,
+        "title": card.title,
+        "position": card.position,
+        "version": card.version,
+        "assigned_to": card.assigned_to,
+        "due_date": card.due_date.isoformat() if card.due_date else None,
+    }
+
+    await broadcast_event(board_id, CARD_UPDATED, event_data, current_user.id)
+    await log_activity(db, board_id, current_user.id, CARD_UPDATED, "card", card.id, event_data)
 
     return card
 
@@ -195,24 +187,19 @@ async def move_existing_card(
     except ConflictError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "message": str(e),
-                "current_version": e.current_version,
-            },
+            detail={"message": str(e), "current_version": e.current_version},
         )
 
-    await broadcast_event(
-        board_id=board_id,
-        event_type=CARD_MOVED,
-        data={
-            "card_id": card.id,
-            "from_column_id": body.column_id,
-            "to_column_id": card.column_id,
-            "position": card.position,
-            "version": card.version,
-        },
-        actor_id=current_user.id,
-    )
+    event_data = {
+        "card_id": card.id,
+        "from_column_id": body.column_id,
+        "to_column_id": card.column_id,
+        "position": card.position,
+        "version": card.version,
+    }
+
+    await broadcast_event(board_id, CARD_MOVED, event_data, current_user.id)
+    await log_activity(db, board_id, current_user.id, CARD_MOVED, "card", card.id, event_data)
 
     return card
 
@@ -234,12 +221,10 @@ async def delete_existing_card(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
         )
 
-    await broadcast_event(
-        board_id=board_id,
-        event_type=CARD_DELETED,
-        data={"card_id": card_id},
-        actor_id=current_user.id,
-    )
+    event_data = {"card_id": card_id}
+
+    await broadcast_event(board_id, CARD_DELETED, event_data, current_user.id)
+    await log_activity(db, board_id, current_user.id, CARD_DELETED, "card", card_id, event_data)
 
 
 # ──────────────────────────────────────────────
@@ -259,7 +244,7 @@ async def create_comment(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Add a comment to a card. Broadcasts to all board members."""
+    """Add a comment to a card."""
     await _check_membership(board_id, current_user, db)
 
     try:
@@ -269,18 +254,16 @@ async def create_comment(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
         )
 
-    await broadcast_event(
-        board_id=board_id,
-        event_type=COMMENT_ADDED,
-        data={
-            "comment_id": comment.id,
-            "card_id": card_id,
-            "user_id": current_user.id,
-            "content": comment.content,
-            "created_at": comment.created_at.isoformat(),
-        },
-        actor_id=current_user.id,
-    )
+    event_data = {
+        "comment_id": comment.id,
+        "card_id": card_id,
+        "user_id": current_user.id,
+        "content": comment.content,
+        "created_at": comment.created_at.isoformat(),
+    }
+
+    await broadcast_event(board_id, COMMENT_ADDED, event_data, current_user.id)
+    await log_activity(db, board_id, current_user.id, COMMENT_ADDED, "comment", comment.id, event_data)
 
     return comment
 
@@ -310,12 +293,10 @@ async def remove_comment(
             status_code=status.HTTP_403_FORBIDDEN, detail=str(e)
         )
 
-    await broadcast_event(
-        board_id=board_id,
-        event_type=COMMENT_DELETED,
-        data={"comment_id": comment_id, "card_id": card_id},
-        actor_id=current_user.id,
-    )
+    event_data = {"comment_id": comment_id, "card_id": card_id}
+
+    await broadcast_event(board_id, COMMENT_DELETED, event_data, current_user.id)
+    await log_activity(db, board_id, current_user.id, COMMENT_DELETED, "comment", comment_id, event_data)
 
 
 # ──────────────────────────────────────────────
@@ -334,7 +315,7 @@ async def attach_label(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Attach a label to a card. Both must belong to the same board."""
+    """Attach a label to a card."""
     await _check_membership(board_id, current_user, db)
 
     try:
@@ -344,12 +325,10 @@ async def attach_label(
             status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
         )
 
-    await broadcast_event(
-        board_id=board_id,
-        event_type=LABEL_ATTACHED,
-        data={"card_id": card_id, "label_id": label_id},
-        actor_id=current_user.id,
-    )
+    event_data = {"card_id": card_id, "label_id": label_id}
+
+    await broadcast_event(board_id, LABEL_ATTACHED, event_data, current_user.id)
+    await log_activity(db, board_id, current_user.id, LABEL_ATTACHED, "card", card_id, event_data)
 
     return {"detail": "Label attached"}
 
@@ -375,9 +354,7 @@ async def detach_label(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(e)
         )
 
-    await broadcast_event(
-        board_id=board_id,
-        event_type=LABEL_REMOVED,
-        data={"card_id": card_id, "label_id": label_id},
-        actor_id=current_user.id,
-    )
+    event_data = {"card_id": card_id, "label_id": label_id}
+
+    await broadcast_event(board_id, LABEL_REMOVED, event_data, current_user.id)
+    await log_activity(db, board_id, current_user.id, LABEL_REMOVED, "card", card_id, event_data)
