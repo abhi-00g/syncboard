@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import auth, boards, columns
+from app.routers import auth, boards, cards, columns, labels
 
 app = FastAPI(
     title="SyncBoard API",
@@ -30,6 +30,8 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(boards.router)
 app.include_router(columns.router)
+app.include_router(cards.router)
+app.include_router(labels.router)
 
 
 @app.get("/api/health")

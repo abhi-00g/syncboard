@@ -7,6 +7,7 @@ from app.schemas.user import UserResponse
 
 
 class CardCreate(BaseModel):
+    column_id: int  # Which column to create the card in
     title: str
     description: Optional[str] = None
     assigned_to: Optional[int] = None
@@ -66,6 +67,15 @@ class LabelResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CardLabelResponse(BaseModel):
+    """Label data as attached to a card, via the junction table."""
+
+    id: int  # CardLabel id
+    label: LabelResponse
+
+    model_config = {"from_attributes": True}
+
+
 class CardDetailResponse(BaseModel):
     """Full card detail — shown when user clicks on a card."""
 
@@ -80,7 +90,7 @@ class CardDetailResponse(BaseModel):
     due_date: Optional[datetime]
     creator: UserResponse
     assignee: Optional[UserResponse]
-    labels: list[LabelResponse]
+    labels: list[CardLabelResponse]
     comments: list[CommentResponse]
     created_at: datetime
     updated_at: datetime
