@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  min-height: 100vh;
+}
+
+/* Smooth scrolling for the board columns */
+.board-columns::-webkit-scrollbar {
+  height: 8px;
+}
+
+.board-columns::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.board-columns::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
