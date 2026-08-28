@@ -101,6 +101,17 @@ export async function login(email: string, password: string) {
   return data as import("../types").TokenResponse;
 }
 
+/**
+ * Guest login — creates a temporary guest account and a pre-seeded demo board.
+ * No password required. Returns a JWT token and the demo board's ID so the
+ * frontend can redirect directly to it.
+ */
+export async function guestLogin() {
+  return request<import("../types").GuestLoginResponse>("/auth/guest", {
+    method: "POST",
+  });
+}
+
 // ──────────────────────────────────────────────
 // Boards
 // ──────────────────────────────────────────────

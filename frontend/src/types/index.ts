@@ -14,6 +14,13 @@ export interface TokenResponse {
   user: User;
 }
 
+export interface GuestLoginResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
+  board_id: number;
+}
+
 export interface Board {
   id: number;
   name: string;
