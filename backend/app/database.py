@@ -3,16 +3,25 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.config import settings
 
-# The engine manages a pool of database connections.
-# pool_size=5 means 5 connections stay open and ready.
-# max_overflow=10 means up to 10 extra connections can be created under load.
-# When all 15 are in use, the next request waits instead of crashing.
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    pool_size=5,
-    max_overflow=10,
-    echo=settings.ENVIRONMENT == "development",  # Log SQL queries in dev
-)
+# Build engine kwargs based on the database driver.
+# PostgreSQL (asyncpg) supports pool_size and max_overflow.
+# SQLite (aiosqlite) uses StaticPool for in-memory test databases
+# and doesn't accept those arguments.
+
+_engine_kwargs: dict = {
+    "echo": settings.ENVIRONMENT == "development",
+}
+
+if settings.DATABASE_URL.startswith("sqlite"):
+    from sqlalchemy.pool import StaticPool
+
+    _engine_kwargs["poolclass"] = StaticPool
+    _engine_kwargs["connect_args"] = {"check_same_thread": False}
+else:
+    _engine_kwargs["pool_size"] = 5
+    _engine_kwargs["max_overflow"] = 10
+
+engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
 
 # Session factory - creates new database sessions.
 # expire_on_commit=False: after committing, objects stay usable without

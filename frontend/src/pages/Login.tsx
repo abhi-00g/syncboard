@@ -10,7 +10,6 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
   const { setAuth } = useAuth();
   const navigate = useNavigate();
 
@@ -34,107 +33,82 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex bg-surface-50">
-      {/* Left panel - branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-brand-600 via-brand-500 to-brand-700
-        items-center justify-center p-12">
-        <div className="max-w-md">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-              <Columns3 size={22} className="text-white" />
-            </div>
-            <span className="text-2xl font-bold text-white">SyncBoard</span>
+    <div className="min-h-screen flex items-center justify-center bg-surface-100 px-4">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-sm"
+      >
+        <div className="flex items-center gap-2 mb-10">
+          <div className="w-8 h-8 rounded-lg bg-brand-500 flex items-center justify-center">
+            <Columns3 size={16} className="text-surface-0" />
           </div>
-          <h2 className="text-3xl font-bold text-white leading-tight mb-4">
-            Collaborate in real time with your team
-          </h2>
-          <p className="text-brand-100 text-lg leading-relaxed">
-            Create boards, organize tasks, and see changes from your teammates instantly.
-            No refresh needed.
-          </p>
+          <span className="text-base font-bold text-surface-900">SyncBoard</span>
         </div>
-      </div>
 
-      {/* Right panel - form */}
-      <div className="flex-1 flex items-center justify-center px-4 sm:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-sm"
-        >
-          {/* Mobile logo */}
-          <div className="flex items-center gap-2.5 mb-8 lg:hidden">
-            <div className="w-9 h-9 bg-gradient-to-br from-brand-500 to-brand-700 rounded-lg
-              flex items-center justify-center shadow-sm">
-              <Columns3 size={18} className="text-white" />
-            </div>
-            <span className="text-xl font-bold text-surface-900">SyncBoard</span>
+        <h1 className="text-xl font-semibold text-surface-900 mb-1">Welcome back</h1>
+        <p className="text-sm text-surface-500 mb-8">Sign in to your account</p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2 bg-red-500/10 border border-red-500/20
+                text-red-400 px-3 py-2.5 rounded-lg text-sm"
+            >
+              <AlertCircle size={15} className="flex-shrink-0" />
+              {error}
+            </motion.div>
+          )}
+
+          <div>
+            <label className="block text-xs font-medium text-surface-500 mb-1.5">
+              Email
+            </label>
+            <input
+              type="email" value={email}
+              onChange={(e) => setEmail(e.target.value)} required
+              placeholder="you@example.com"
+              className="w-full px-3 py-2.5 bg-surface-200/50 border border-surface-200 rounded-lg
+                text-surface-800 placeholder-surface-400 text-sm
+                focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500/50
+                transition-colors"
+            />
           </div>
 
-          <h1 className="text-2xl font-bold text-surface-900 mb-1">Welcome back</h1>
-          <p className="text-surface-500 mb-8">Sign in to your account</p>
+          <div>
+            <label className="block text-xs font-medium text-surface-500 mb-1.5">
+              Password
+            </label>
+            <input
+              type="password" value={password}
+              onChange={(e) => setPassword(e.target.value)} required
+              placeholder="Enter your password"
+              className="w-full px-3 py-2.5 bg-surface-200/50 border border-surface-200 rounded-lg
+                text-surface-800 placeholder-surface-400 text-sm
+                focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500/50
+                transition-colors"
+            />
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2.5 bg-red-50 border border-red-200 text-red-700
-                  px-4 py-3 rounded-xl text-sm"
-              >
-                <AlertCircle size={16} className="flex-shrink-0" />
-                {error}
-              </motion.div>
-            )}
+          <button
+            type="submit" disabled={loading}
+            className="w-full py-2.5 bg-brand-500 text-surface-0 font-semibold text-sm rounded-lg
+              hover:bg-brand-400 disabled:opacity-50 disabled:cursor-not-allowed
+              transition-colors"
+          >
+            {loading ? "Signing in..." : "Sign in"}
+          </button>
+        </form>
 
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-surface-700 mb-1.5">
-                Email
-              </label>
-              <input
-                id="email" type="email" value={email}
-                onChange={(e) => setEmail(e.target.value)} required
-                className="w-full px-4 py-2.5 border border-surface-300 rounded-xl
-                  focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent
-                  text-surface-900 placeholder-surface-400 transition-shadow"
-                placeholder="you@example.com"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-surface-700 mb-1.5">
-                Password
-              </label>
-              <input
-                id="password" type="password" value={password}
-                onChange={(e) => setPassword(e.target.value)} required
-                className="w-full px-4 py-2.5 border border-surface-300 rounded-xl
-                  focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent
-                  text-surface-900 placeholder-surface-400 transition-shadow"
-                placeholder="Enter your password"
-              />
-            </div>
-
-            <button
-              type="submit" disabled={loading}
-              className="w-full py-2.5 bg-brand-500 text-white font-semibold rounded-xl
-                hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500
-                focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed
-                shadow-sm shadow-brand-500/20 hover:shadow-md hover:shadow-brand-500/30
-                transition-all active:scale-[0.98]"
-            >
-              {loading ? "Signing in..." : "Sign in"}
-            </button>
-          </form>
-
-          <p className="text-center text-sm text-surface-500 mt-8">
-            Don't have an account?{" "}
-            <Link to="/register" className="text-brand-500 font-semibold hover:text-brand-600 transition-colors">
-              Create one
-            </Link>
-          </p>
-        </motion.div>
-      </div>
+        <p className="text-center text-sm text-surface-400 mt-8">
+          Don't have an account?{" "}
+          <Link to="/register" className="text-brand-500 font-medium hover:text-brand-600 transition-colors">
+            Create one
+          </Link>
+        </p>
+      </motion.div>
     </div>
   );
 }
