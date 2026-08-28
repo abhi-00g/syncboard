@@ -7,8 +7,7 @@
  *
  * Every API call in the app goes through this client.
  */
-
-const BASE_URL = "/api";
+const BASE_URL = import.meta.env.VITE_API_URL || "/api";
 
 class ApiError extends Error {
   status: number;

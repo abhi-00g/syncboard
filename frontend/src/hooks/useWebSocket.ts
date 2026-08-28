@@ -47,9 +47,10 @@ export function useWebSocket({
       wsRef.current = null;
     }
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = window.location.host;
-    const url = `${protocol}//${host}/ws/boards/${boardId}?token=${token}`;
+    const wsBase = import.meta.env.VITE_WS_URL;
+    const url = wsBase
+      ? `${wsBase}/ws/boards/${boardId}?token=${token}`
+      : `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws/boards/${boardId}?token=${token}`;
 
     const ws = new WebSocket(url);
     wsRef.current = ws;
