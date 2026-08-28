@@ -9,6 +9,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - uses: actions/checkout@v4
@@ -21,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r backend/requirements.txt
-          pip install pytest pytest-asyncio httpx aiosqlite
+          pip install pytest pytest-asyncio httpx aiosqlite pytest-timeout
 
       - name: Run tests
-        run: python -m pytest -v
+        run: python -m pytest -v --timeout=30
