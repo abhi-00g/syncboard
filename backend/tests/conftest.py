@@ -64,6 +64,13 @@ async def _override_get_db():
 
 # Override the get_db dependency so all routes use the test database
 app.dependency_overrides[get_db] = _override_get_db
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def _test_lifespan(app):
+    yield
+
+app.router.lifespan_context = _test_lifespan
 
 
 # ── Fixtures ──
