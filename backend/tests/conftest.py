@@ -18,6 +18,7 @@ os.environ["ENVIRONMENT"] = "testing"
 
 import pytest
 import pytest_asyncio
+from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, patch
 
 from sqlalchemy import event
@@ -64,10 +65,10 @@ async def _override_get_db():
 
 # Override the get_db dependency so all routes use the test database
 app.dependency_overrides[get_db] = _override_get_db
-from contextlib import asynccontextmanager
 
+# Replace the real lifespan (which connects/disconnects Redis) with a no-op
 @asynccontextmanager
-async def _test_lifespan(app):
+async def _test_lifespan(a):
     yield
 
 app.router.lifespan_context = _test_lifespan
@@ -147,3 +148,17 @@ async def board_setup(client: AsyncClient, authed):
     board_id = resp.json()["id"]
     detail = await client.get(f"/api/boards/{board_id}", headers=headers)
     return headers, detail.json()
+
+
+# ── Session hook ──
+
+
+def pytest_sessionfinish(session, exitstatus):
+    """Force-exit after all tests and reporting complete.
+
+    The httpx AsyncClient + ASGI transport holds an event loop reference
+    that deadlocks during Python's async generator cleanup on shutdown.
+    This hook runs after pytest has collected results, printed output,
+    and determined the exit code — so the force-exit loses nothing.
+    """
+    os._exit(exitstatus)
