@@ -2,20 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  color-scheme: dark;
+}
+
 body {
-  min-height: 100vh;
+  background-color: #111114;
+  color: #e4e4e7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Smooth scrolling for the board columns */
-.board-columns::-webkit-scrollbar {
-  height: 8px;
+/* Scrollbar — thin, subtle, matches dark UI */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-.board-columns::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.board-columns::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Selection color */
+::selection {
+  background: rgba(200, 238, 68, 0.25);
+  color: #fafafa;
 }

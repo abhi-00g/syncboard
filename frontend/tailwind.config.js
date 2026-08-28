@@ -4,33 +4,35 @@ export default {
   theme: {
     extend: {
       colors: {
-        // SyncBoard palette — cool slate with an electric blue accent.
-        // Professional enough for a productivity tool, distinctive
-        // enough to not look like every other Tailwind template.
+        // SyncBoard dark palette — near-black canvas with acid lime accent.
+        // The surface scale is inverted from a typical light-mode scale:
+        // low numbers = dark backgrounds, high numbers = light text.
+        // This means existing classes like bg-surface-100 and text-surface-900
+        // produce correct dark-mode output without changing class names.
         brand: {
-          50: "#eef4ff",
-          100: "#d9e5ff",
-          200: "#bcd3ff",
-          300: "#8eb8ff",
-          400: "#5990ff",
-          500: "#3366ff", // Primary accent
-          600: "#1b44ff",
-          700: "#1433eb",
-          800: "#172bbe",
-          900: "#192b95",
+          50: "#0f1a00",
+          100: "#1a2e00",
+          200: "#2d5000",
+          300: "#4a7f00",
+          400: "#7ab820",
+          500: "#c8ee44", // Primary accent — acid lime
+          600: "#d4f270",
+          700: "#e0f69c",
+          800: "#ecfac8",
+          900: "#f5fde6",
         },
         surface: {
-          0: "#ffffff",
-          50: "#f8fafc",
-          100: "#f1f5f9",
-          200: "#e2e8f0",
-          300: "#cbd5e1",
-          400: "#94a3b8",
-          500: "#64748b",
-          600: "#475569",
-          700: "#334155",
-          800: "#1e293b",
-          900: "#0f172a",
+          0: "#09090b",
+          50: "#0c0c0f",
+          100: "#111114", // Page canvas
+          200: "#1a1a1f", // Borders, dividers
+          300: "#222228", // Cards, elevated surfaces
+          400: "#71717a", // Muted text, icons
+          500: "#a1a1aa", // Secondary text
+          600: "#d4d4d8", // Body text
+          700: "#e4e4e7", // Strong text
+          800: "#f4f4f5", // Headings
+          900: "#fafafa", // White text
         },
       },
       fontFamily: {
