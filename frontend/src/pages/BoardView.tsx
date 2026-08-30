@@ -229,7 +229,7 @@ export default function BoardView() {
   const { isConnected } = useWebSocket({ boardId: boardId ? parseInt(boardId) : 0, token, onEvent: handleWSEvent, enabled: !!boardId && !!token });
 
   useEffect(() => { if (boardId) loadBoard(parseInt(boardId)); }, [boardId]);
-  async function loadBoard(id: number) { setLoading(true); setError(""); try { setBoard(await getBoardDetail(id)); } catch { setError("Failed to load board"); } finally { setLoading(false); } }
+  async function loadBoard(id: number) { if (!board) setLoading(true); setError(""); try { setBoard(await getBoardDetail(id)); } catch { setError("Failed to load board"); } finally { setLoading(false); } }
 
   function handleDragStart(event: DragStartEvent) {
     const cardId = parseInt(String(event.active.id).replace("card-", ""));
