@@ -34,15 +34,20 @@ app = FastAPI(
 
 # CORS: allow the React frontend to call this API.
 # In development, the frontend runs on localhost:5173 (Vite default).
-# In production, this should be restricted to the actual frontend domain.
+# In production, allow any Vercel deployment URL for this project.
+# Note: allow_origins=["*"] with allow_credentials=True is invalid
+# per the CORS spec — browsers reject it. Use allow_origin_regex instead.
 origins = ["http://localhost:5173", "http://localhost:3000"]
+origin_regex = None
+
 if settings.ENVIRONMENT == "production":
-    # In production, set ALLOWED_ORIGINS env var to the Vercel domain
-    origins = ["*"]  # TODO: restrict in Phase 5 deployment
+    origins = []
+    origin_regex = r"https://syncboard.*\.vercel\.app"
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
