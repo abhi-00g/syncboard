@@ -254,12 +254,24 @@ export default function BoardView() {
     if (!targetCol) return;
     const newPosition = targetCol.cards.length;
     setBoard((prev) => { if (!prev) return prev; const uc = { ...draggedCard!, column_id: targetColumnId!, position: newPosition }; return { ...prev, columns: prev.columns.map((col) => { const cw = col.cards.filter((c) => c.id !== cardId); if (col.id === targetColumnId) return { ...col, cards: [...cw, uc] }; return { ...col, cards: cw }; }) }; });
-    try { await moveCard(parseInt(boardId), cardId, targetColumnId, newPosition, draggedCard.version); await loadBoard(parseInt(boardId)); } catch { await loadBoard(parseInt(boardId)); }
+    try {
+      await moveCard(parseInt(boardId), cardId, targetColumnId, newPosition, draggedCard.version);
+      await loadBoard(parseInt(boardId));
+      setActivityRefresh((p) => p + 1);
+    } catch {
+      await loadBoard(parseInt(boardId));
+    }
   }
 
   async function handleAddCard(columnId: number) {
     if (!newCardTitle.trim() || !boardId) return;
-    try { const card = await createCard(parseInt(boardId), columnId, newCardTitle.trim()); setBoard((prev) => { if (!prev) return prev; return { ...prev, columns: prev.columns.map((col) => col.id === columnId ? { ...col, cards: [...col.cards, card] } : col) }; }); setNewCardTitle(""); setAddingCardColumnId(null); } catch {}
+    try {
+      const card = await createCard(parseInt(boardId), columnId, newCardTitle.trim());
+      setBoard((prev) => { if (!prev) return prev; return { ...prev, columns: prev.columns.map((col) => col.id === columnId ? { ...col, cards: [...col.cards, card] } : col) }; });
+      setNewCardTitle("");
+      setAddingCardColumnId(null);
+      setActivityRefresh((p) => p + 1);
+    } catch {}
   }
 
   async function handleInvite() {
@@ -269,8 +281,14 @@ export default function BoardView() {
     catch (err) { if (err instanceof ApiError) { if (err.status === 404) setInviteError("No account with that email"); else if (err.status === 409) setInviteError("Already a member"); else if (err.status === 403) setInviteError("No permission"); else setInviteError(typeof err.detail === "string" ? err.detail : "Failed"); } else setInviteError("Something went wrong"); }
   }
 
-  function handleCardUpdated() { if (boardId) loadBoard(parseInt(boardId)); }
-  function handleCardDeleted(cardId: number) { setBoard((prev) => { if (!prev) return prev; return { ...prev, columns: prev.columns.map((col) => ({ ...col, cards: col.cards.filter((c) => c.id !== cardId) })) }; }); }
+  function handleCardUpdated() {
+    if (boardId) loadBoard(parseInt(boardId));
+    setActivityRefresh((p) => p + 1);
+  }
+  function handleCardDeleted(cardId: number) {
+    setBoard((prev) => { if (!prev) return prev; return { ...prev, columns: prev.columns.map((col) => ({ ...col, cards: col.cards.filter((c) => c.id !== cardId) })) }; });
+    setActivityRefresh((p) => p + 1);
+  }
   function handleLogout() { logout(); navigate("/"); }
 
   if (loading) return (
