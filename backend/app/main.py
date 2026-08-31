@@ -34,21 +34,19 @@ app = FastAPI(
 
 # CORS: allow the React frontend to call this API.
 # In development, the frontend runs on localhost:5173 (Vite default).
-# In production, allow any Vercel deployment URL for this project.
-# Note: allow_origins=["*"] with allow_credentials=True is invalid
-# per the CORS spec — browsers reject it. Use allow_origin_regex instead.
-origins = ["http://localhost:5173", "http://localhost:3000"]
-origin_regex = None
-
+# In production, allow all origins. This is safe because auth uses
+# Bearer tokens in the Authorization header, not cookies — so there's
+# no CSRF risk from open CORS. allow_credentials is omitted because
+# allow_origins=["*"] + allow_credentials=True is invalid per the
+# CORS spec and browsers silently reject it.
 if settings.ENVIRONMENT == "production":
-    origins = []
-    origin_regex = r"https://syncboard.*\.vercel\.app"
+    origins = ["*"]
+else:
+    origins = ["http://localhost:5173", "http://localhost:3000"]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=origin_regex,
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
