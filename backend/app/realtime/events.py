@@ -26,6 +26,12 @@ async def broadcast_event(
     actor_id is used by the listener to skip broadcasting back
     to the user who caused the event (they already applied the
     change optimistically).
+
+    If Redis is unavailable (connection dropped on free-tier Upstash
+    after idle timeout), the broadcast silently fails. The HTTP
+    mutation still succeeds — the acting user sees the change via
+    optimistic update. Other connected users miss this one event
+    but will sync on their next board load.
     """
     event = {
         "type": event_type,
@@ -34,7 +40,10 @@ async def broadcast_event(
         "data": data,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
-    await redis_service.publish(board_id, event)
+    try:
+        await redis_service.publish(board_id, event)
+    except Exception:
+        pass
 
 
 # ──────────────────────────────────────────────
